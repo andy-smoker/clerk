@@ -1,4 +1,4 @@
-package main
+package clerk
 
 type Error struct {
 }

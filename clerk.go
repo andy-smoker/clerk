@@ -2,46 +2,56 @@ package clerk
 
 import (
 	"fmt"
-	"sync"
+	"os"
+	"time"
 )
 
-type Clerk struct {
-	*sync.WaitGroup
-	Printers []*Printer
-}
+var levels []string = []string{"DEBUG", "INFO", "ERROR", "WARNING"}
+var mods []string = []string{"trace", "info"}
 
 type Printer struct {
-	*sync.Mutex
 	Mode     string
 	FilePath string
-	Input    chan string
 }
 
-func NewClerk() *Clerk {
-	return &Clerk{}
-
+type Message struct {
+	Type string
+	Date time.Time
+	Log  string
 }
 
-func (c *Clerk) NewPrinter(mode, filepath string, input chan string) {
-	c.WaitGroup.Add(1)
+func NewPrinter(mod, name, filepath string) *Printer {
 	p := Printer{
-		Mode:     "LOG",
-		FilePath: "./default.log",
-		Input:    input,
+		Mode:     mods[1],
+		FilePath: name + ".log",
 	}
-	fmt.Sscan(mode, &p.Mode)
+	for _, v := range mods {
+		if v == mod {
+			p.Mode = v
+		}
+	}
 	fmt.Sscan(filepath, &p.FilePath)
-	c.Printers = append(c.Printers, &p)
+	if _, err := os.Stat(p.FilePath); os.IsNotExist(err) {
+		os.Create(p.FilePath)
+	}
+	return &p
 }
 
-func (c *Printer) ReadLog() {
-
+func (p *Printer) writeToFile(input string) error {
+	// open file for append strings
+	file, err := os.OpenFile(p.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.WriteString(input)
+	return err
 }
 
-func (c *Printer) WriteLog() {
-
-}
-
-func (c *Clerk) Start() {
-
+// WriteLog lvl 0:"DEBUG", 1:"INFO", 2:"ERROR", 3:"WARNING"
+func (p *Printer) WriteLog(lvl int, t time.Time, msg string) error {
+	if p.Mode == mods[1] && lvl < 1 {
+		return nil
+	}
+	return p.writeToFile(fmt.Sprintf("%s [%s] %s", t.Format("\n2006-01-02 15:04:05"), levels[lvl], msg))
 }

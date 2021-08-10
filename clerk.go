@@ -3,20 +3,13 @@ package clerk
 import (
 	"fmt"
 	"os"
-	"sync"
 	"time"
 )
 
 var levels []string = []string{"DEBUG", "INFO", "ERROR", "WARNING"}
 var mods []string = []string{"trace", "info"}
 
-type Clerk struct {
-	*sync.WaitGroup
-	Printers map[string]Printer
-}
-
 type Printer struct {
-	*sync.Mutex
 	Mode     string
 	FilePath string
 }
@@ -27,38 +20,38 @@ type Message struct {
 	Log  string
 }
 
-func NewClerk() *Clerk {
-	return &Clerk{
-		WaitGroup: &sync.WaitGroup{},
-		Printers:  map[string]Printer{},
-	}
-
-}
-
-func (c *Clerk) NewPrinter(mode, name, filepath string, input string) *Printer {
-	c.WaitGroup.Add(1)
+func NewPrinter(mod, name, filepath string) *Printer {
 	p := Printer{
-		Mode:     "LOG",
-		FilePath: "./" + name + ".log",
+		Mode:     mods[1],
+		FilePath: name + ".log",
 	}
-	fmt.Sscan(mode, &p.Mode)
+	for _, v := range mods {
+		if v == mod {
+			p.Mode = v
+		}
+	}
 	fmt.Sscan(filepath, &p.FilePath)
 	if _, err := os.Stat(p.FilePath); os.IsNotExist(err) {
 		os.Create(p.FilePath)
 	}
-	c.Printers[name] = p
 	return &p
 }
 
-func (p *Printer) WriteLog(input string) {
-	file, err := os.Open(p.FilePath)
+func (p *Printer) writeToFile(input string) error {
+	// open file for append strings
+	file, err := os.OpenFile(p.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
-	p.Mutex.Lock()
+	defer file.Close()
 	_, err = file.WriteString(input)
-	p.Mutex.Unlock()
-	if err != nil {
-		fmt.Println(err)
+	return err
+}
+
+// WriteLog lvl 0:"DEBUG", 1:"INFO", 2:"ERROR", 3:"WARNING"
+func (p *Printer) WriteLog(lvl int, t time.Time, msg string) error {
+	if p.Mode == mods[1] && lvl < 1 {
+		return nil
 	}
+	return p.writeToFile(fmt.Sprintf("%s [%s] %s", t.Format("\n2006-01-02 15:04:05"), levels[lvl], msg))
 }

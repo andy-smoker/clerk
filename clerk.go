@@ -20,6 +20,7 @@ type Message struct {
 	Log  string
 }
 
+// NewPrinter create new priter with config
 func NewPrinter(mod, name, filepath string) *Printer {
 	p := Printer{
 		Mode:     mods[1],
@@ -37,9 +38,10 @@ func NewPrinter(mod, name, filepath string) *Printer {
 	return &p
 }
 
+// writeToFile write log row to file
 func (p *Printer) writeToFile(input string) error {
 	// open file for append strings
-	file, err := os.OpenFile(p.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModeAppend)
+	file, err := os.OpenFile(p.FilePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
 		return err
 	}
